@@ -10,7 +10,7 @@ function calculateEntropy(password) {
         return 0;
     }
 
-    // Entropy formula: log2(Number of possible characters)^Password length
+    // Entropy formula: log2(Number of possible characters) * Password length
     const entropy = Math.log2(numberOfPossibleCharacters) * passwordLength;
     return entropy;
 }
@@ -32,11 +32,11 @@ function getCharacterSet(password) {
     return charset;
 }
 
-// Example usage
-const password1 = "abc123";
-const password2 = "Gf!@6Wq9Z#";
+// // Example usage
+// const password1 = "abc123";
+// const password2 = "Gf!@6Wq9Z#";
 
-console.log(`Entropy of "${password1}": ${calculateEntropy(password1)} bits`);
-console.log(`Entropy of "${password2}": ${calculateEntropy(password2)} bits`);
+// console.log(`Entropy of "${password1}": ${calculateEntropy(password1)} bits`);
+// console.log(`Entropy of "${password2}": ${calculateEntropy(password2)} bits`);
 
 module.exports = calculateEntropy;

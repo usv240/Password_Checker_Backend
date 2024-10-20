@@ -2,79 +2,100 @@ const cors = require('cors');
 const express = require('express');
 const app = express();
 const commonPasswords = require('./commonPasswords');
+const calculateEntropy = require('./entropyCalculator');
+const { detectPasswordPrediction } = require('./predictions');
 
 // Middleware to parse JSON bodies and handle CORS
 app.use(express.json());
 app.use(cors());
 
 // Password strength calculation function
-function Strength(password) {
-  let i = 0;
-  if (password.length > 6) {
-    i++;
-  }
-  if (password.length >= 10) {
-    i++;
-  }
+function calculatePasswordScore(password) {
+  let score = 0;
+  if (password.length > 6) score += 20;
+  if (password.length >= 10) score += 20;
+  if (/[A-Z]/.test(password)) score += 20;
+  if (/[0-9]/.test(password)) score += 20;
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 20;
 
-  if (/[A-Z]/.test(password)) {
-    i++;
-  }
-
-  if (/[0-9]/.test(password)) {
-    i++;
-  }
-
-  if (/[A-Za-z0-8]/.test(password)) {
-    i++;
-  }
-
-  return i;
+  return score;  // Total score out of 100
 }
 
-// Handle POST request for password checking
+// Educative tips for improving passwords
+function getPasswordTips(password) {
+  let tips = [];
+
+  if (!/[A-Z]/.test(password)) tips.push("Try adding some uppercase letters.");
+  if (!/[0-9]/.test(password)) tips.push("Include at least one number.");
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) tips.push("Add a special character like @ or #.");
+  if (password.length < 10) tips.push("Make your password longer (at least 10 characters).");
+
+  return tips.length ? tips : ['Your password is strong!'];
+}
+
+// Check for common mutations in the password
+function detectCommonMutations(password) {
+  const mutations = [
+    { original: "a", mutation: "@" },
+    { original: "o", mutation: "0" },
+    { original: "e", mutation: "3" }
+  ];
+
+  let isPredictable = false;
+  mutations.forEach(({ original, mutation }) => {
+    if (password.includes(mutation)) {
+      isPredictable = true;
+    }
+  });
+
+  return isPredictable;
+}
+
+// Handle POST request
 app.post('/check-password', (req, res) => {
-  const { password } = req.body;
-  
+  const { password, userData } = req.body;
+
   if (!password) {
     return res.status(400).json({ message: 'Password is required' });
   }
 
-  // Check if the password is common
-  const isCommon = commonPasswords.includes(password);
+  console.log(`Received password: ${password}`);
+  console.log(`Received user data: ${JSON.stringify(userData)}`);
 
-  // Calculate password strength
-  const strength = Strength(password);
+  // Calculate password strength score
+  const score = calculatePasswordScore(password);
   let strengthLabel = 'weak';
 
-  if (strength <= 2) {
-    strengthLabel = 'weak';
-  } else if (strength >= 2 && strength <= 4) {
-    strengthLabel = 'moderate';
-  } else {
+  if (score >= 80) {
     strengthLabel = 'strong';
+  } else if (score >= 50) {
+    strengthLabel = 'moderate';
   }
+
+  // Provide tips for improving password
+  const tips = getPasswordTips(password);
+
+  // Check for common mutations
+  const hasPredictableMutations = detectCommonMutations(password);
+
+  // Check if password is easy to predict using the prediction logic
+  const isGuessable = detectPasswordPrediction(password, userData);
+
+  // Calculate entropy
+  const entropy = calculateEntropy(password);
+  const roundedEntropy = entropy.toFixed(2);
 
   // Return the result to the frontend
   return res.json({
-    common: isCommon,
     strength: strengthLabel,
-    message: isCommon 
-      ? 'This is a commonly used password. Please choose a stronger one.'
-      : `Password strength: ${strengthLabel}`
+    score: score + "/100", // Send score to frontend
+    entropy: `${roundedEntropy} bits`,
+    mutationWarning: hasPredictableMutations ? 'Your password contains common mutations like @ instead of a.' : '',
+    predictionWarning: isGuessable ? 'Your password contains guessable information (e.g., part of your name, birthdate, or email).' : '',
+    tips,
+    message: `Password strength: ${strengthLabel}`
   });
 });
-
-const calculateEntropy = require('./entropyCalculator');
-
-// Test cases
-const password1 = "abc123";
-const password2 = "Gf!@6Wq9Z#";
-
-console.log(`Entropy of "${password1}": ${calculateEntropy(password1)} bits`);
-console.log(`Entropy of "${password2}": ${calculateEntropy(password2)} bits`);
-
-
 
 const PORT = 3002;
 app.listen(PORT, () => {
