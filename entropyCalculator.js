@@ -32,11 +32,4 @@ function getCharacterSet(password) {
     return charset;
 }
 
-// // Example usage
-// const password1 = "abc123";
-// const password2 = "Gf!@6Wq9Z#";
-
-// console.log(`Entropy of "${password1}": ${calculateEntropy(password1)} bits`);
-// console.log(`Entropy of "${password2}": ${calculateEntropy(password2)} bits`);
-
 module.exports = calculateEntropy;

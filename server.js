@@ -41,14 +41,18 @@ function detectCommonMutations(password) {
     { original: "e", mutation: "3" }
   ];
 
-  let isPredictable = false;
+  let detectedMutations = [];
   mutations.forEach(({ original, mutation }) => {
     if (password.includes(mutation)) {
-      isPredictable = true;
+      detectedMutations.push({ original, mutation });
     }
   });
 
-  return isPredictable;
+  if (detectedMutations.length > 0) {
+    return detectedMutations;
+  } else {
+    return false; // No mutations found
+  }
 }
 
 // Handle POST request
@@ -76,7 +80,13 @@ app.post('/check-password', (req, res) => {
   const tips = getPasswordTips(password);
 
   // Check for common mutations
-  const hasPredictableMutations = detectCommonMutations(password);
+  const detectedMutations = detectCommonMutations(password);
+  let mutationWarning = '';
+
+  if (detectedMutations) {
+    mutationWarning = 'Your password contains common mutations like ';
+    mutationWarning += detectedMutations.map(m => `${m.mutation} instead of ${m.original}`).join(', ') + '.';
+  }
 
   // Check if password is easy to predict using the prediction logic
   const isGuessable = detectPasswordPrediction(password, userData);
@@ -90,7 +100,7 @@ app.post('/check-password', (req, res) => {
     strength: strengthLabel,
     score: score + "/100", // Send score to frontend
     entropy: `${roundedEntropy} bits`,
-    mutationWarning: hasPredictableMutations ? 'Your password contains common mutations like @ instead of a.' : '',
+    mutationWarning: mutationWarning || '',  // Send mutation warning if applicable
     predictionWarning: isGuessable ? 'Your password contains guessable information (e.g., part of your name, birthdate, or email).' : '',
     tips,
     message: `Password strength: ${strengthLabel}`
