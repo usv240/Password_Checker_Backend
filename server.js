@@ -91,10 +91,11 @@ function detectPasswordPrediction(password, userData) {
 }
 
 // Password Strength Calculation
-function calculatePasswordScore(password) {
+function calculatePasswordScore(password, userData) {
   const entropy = calculateEntropy(password);
   let score = 0;
 
+  // Base scoring criteria
   if (entropy >= 40) score += 40;
   else if (entropy >= 20) score += 20;
 
@@ -104,10 +105,20 @@ function calculatePasswordScore(password) {
   if (/[0-9]/.test(password)) score += 10;
   if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 10;
 
+  // Penalty for repeated characters
   if (/(.)\1{2,}/.test(password)) score -= 10;
 
+  // Add penalty for predictable patterns
+  const predictionWarning = detectPasswordPrediction(password, userData);
+  if (predictionWarning) {
+    score -= 30; // Penalize significantly for using predictable patterns
+  }
+
+  // Ensure score is within range
   return Math.min(Math.max(score, 0), 100);
 }
+
+
 
 // Password Feedback Generation
 function getPasswordFeedback(password, userData) {
@@ -174,10 +185,11 @@ app.post('/check-password', async (req, res) => {
     return res.status(400).json({ message: 'User data is required' });
   }
 
-  const score = calculatePasswordScore(password);
+  const score = calculatePasswordScore(password, userData);
   const entropy = calculateEntropy(password);
   const mutationWarning = detectCommonMutations(password) || 'None';
   const predictionWarning = detectPasswordPrediction(password, userData) || 'None';
+  const strength = classifyPasswordStrength(score, predictionWarning);
   const tips = getPasswordFeedback(password, userData);
 
   const userStored = await hashAndStoreUser(password, userData);
@@ -186,17 +198,24 @@ app.post('/check-password', async (req, res) => {
   }
 
   return res.json({
-    strength: score >= 80 ? 'strong' : score >= 50 ? 'moderate' : 'weak',
+    strength,
     score: `${score}/100`,
     entropy: entropy || 'N/A',
     mutationWarning,
     predictionWarning,
     tips,
-    message: `Password strength: ${
-      score >= 80 ? 'strong' : score >= 50 ? 'moderate' : 'weak'
-    }`,
+    message: `Password strength: ${strength}`,
   });
 });
+
+function classifyPasswordStrength(score, predictionWarning) {
+  if (predictionWarning) return "weak"; // Automatically classify as weak if prediction issues are detected
+  if (score >= 80) return "strong";
+  if (score >= 50) return "moderate";
+  return "weak";
+}
+
+
 
 // Start server
 const PORT = 3002;
