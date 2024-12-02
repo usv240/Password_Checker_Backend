@@ -1,6 +1,4 @@
-// Entropy Calculator Module
 
-// Function to calculate the entropy of a password
 function calculateEntropy(password) {
     const possibleCharacters = getCharacterSet(password);
     const numberOfPossibleCharacters = possibleCharacters.length;
@@ -10,12 +8,12 @@ function calculateEntropy(password) {
         return 0;
     }
 
-    // Entropy formula: log2(Number of possible characters) * Password length
+  
     const entropy = Math.log2(numberOfPossibleCharacters) * passwordLength;
     return entropy;
 }
 
-// Function to determine the set of characters used in the password
+
 function getCharacterSet(password) {
     let charset = "";
 

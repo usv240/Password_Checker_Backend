@@ -51,6 +51,6 @@ const userDataList = [
     { name: "TaraRoss", birthdate: "1995", email: "tara.ross@example.com" }
   ];
   
-  // Export the list of user data
+
   module.exports = userDataList;
   

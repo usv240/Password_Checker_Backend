@@ -1,37 +1,37 @@
 const userDataList = require('./userData');
 
-// Check for password prediction defense (if password contains user-specific data)
+
 function detectPasswordPrediction(password, userData) {
     let userSpecificPatterns = [];
 
-    // If user data is provided, extract patterns from name, birthdate, and email
+
     if (userData) {
         const { name, birthdate, email } = userData;
         
         if (name) {
-            const nameParts = name.split(/(?=[A-Z])/);  // Split name by uppercase (e.g., "JohnDoe" -> ["John", "Doe"])
+            const nameParts = name.split(/(?=[A-Z])/);  
             userSpecificPatterns.push(...nameParts);
         }
 
         if (birthdate) {
-            userSpecificPatterns.push(birthdate);  // Add birthdate as a whole string
+            userSpecificPatterns.push(birthdate);  
         }
 
         if (email) {
-            const emailUserPart = email.split('@')[0];  // Only use part before "@"
+            const emailUserPart = email.split('@')[0];  
             userSpecificPatterns.push(emailUserPart);
         }
     }
 
-    // Check for guessable patterns in password even if no user data provided
-    const defaultGuessablePatterns = ['123', 'password', 'admin'];  // Add any general patterns
+
+    const defaultGuessablePatterns = ['123', 'password', 'admin'];  
     userSpecificPatterns.push(...defaultGuessablePatterns);
 
-    // Check if the password contains any of the patterns
+
     let isGuessable = false;
 
     userSpecificPatterns.forEach((pattern) => {
-        const regex = new RegExp(pattern, 'i');  // Case-insensitive search
+        const regex = new RegExp(pattern, 'i');  
         if (regex.test(password)) {
             isGuessable = true;
             console.log(`Password contains guessable pattern: ${pattern}`);
@@ -42,7 +42,7 @@ function detectPasswordPrediction(password, userData) {
     return isGuessable;
 }
 
-// Export the function
+
 module.exports = {
   detectPasswordPrediction
 };

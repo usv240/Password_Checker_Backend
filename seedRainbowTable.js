@@ -1,21 +1,21 @@
 const mongoose = require('mongoose');
-const commonPasswords = require('./commonPasswords'); // Import common passwords
+const commonPasswords = require('./commonPasswords'); 
 
-// Define the schema for the `commonpasswords` collection
+
 const CommonPasswordsSchema = new mongoose.Schema({
     password: { type: String, required: true, unique: true },
 });
 
-// Define the schema for the `compromisedpasswords` collection
+
 const CompromisedPasswordsSchema = new mongoose.Schema({
     password: { type: String, required: true, unique: true },
 });
 
-// Create models for both collections
+
 const CommonPasswords = mongoose.model('CommonPasswords', CommonPasswordsSchema);
 const CompromisedPasswords = mongoose.model('CompromisedPasswords', CompromisedPasswordsSchema);
 
-// Local list of compromised passwords
+
 const compromisedPasswords = [
     "123456", "password", "123456789", "qwerty", "12345678", "abc123", "password1",
     "111111", "iloveyou", "123123", "letmein", "monkey", "dragon", "sunshine",
@@ -27,10 +27,10 @@ const compromisedPasswords = [
     "batman", "shadow", "pokemon", "monday", "sunday", "mustang", "batman123"
 ];
 
-// MongoDB connection URI
-const mongoUri = 'mongodb://localhost:27017/Passwordchecker'; // Match exact database name case
 
-// Function to seed a collection
+const mongoUri = 'mongodb://localhost:27017/Passwordchecker'; 
+
+
 const seedCollection = async (Model, data, collectionName) => {
     try {
         console.log(`Clearing existing data in the ${collectionName} collection...`);
@@ -63,15 +63,15 @@ const seedCollection = async (Model, data, collectionName) => {
     }
 };
 
-// Connect to MongoDB and seed both collections
+
 mongoose.connect(mongoUri)
     .then(async () => {
         console.log('Connected to MongoDB');
 
-        // Seed the CommonPasswords collection
+      
         await seedCollection(CommonPasswords, commonPasswords, 'commonpasswords');
 
-        // Seed the CompromisedPasswords collection
+        
         await seedCollection(CompromisedPasswords, compromisedPasswords, 'compromisedpasswords');
 
         mongoose.disconnect();
