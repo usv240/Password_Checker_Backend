@@ -2,19 +2,22 @@ const cors = require('cors');
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const calculateEntropy = require('./entropyCalculator'); 
-const userDataPatterns = require('./userData'); 
+const calculateEntropy = require('./entropyCalculator'); // Assuming this file exists
+const userDataPatterns = require('./userData'); // Assuming this file exists
 const app = express();
 
+// Middleware to parse JSON bodies and handle CORS
 app.use(express.json());
 app.use(cors());
 
+// MongoDB connection
 const mongoUri = 'mongodb://localhost:27017/Passwordchecker';
 mongoose
   .connect(mongoUri)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('Error connecting to MongoDB:', err));
 
+// Define schema and models
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: false },
   email: { type: String, required: false },
@@ -25,7 +28,7 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Function to log the password being checked and the detected patterns/mutations
+// Advanced Pattern Matching: Keyboard Sequences and Predictable Patterns
 function detectPredictablePatterns(password) {
   const patterns = [
     'qwerty',
@@ -39,13 +42,12 @@ function detectPredictablePatterns(password) {
     'letmein',
     'welcome',
   ];
-  const matchedPatterns = patterns.filter((pattern) =>
+  return patterns.filter((pattern) =>
     password.toLowerCase().includes(pattern)
   );
-  console.log('Detected predictable patterns:', matchedPatterns);
-  return matchedPatterns;
 }
 
+// Detect common mutations in the password
 function detectCommonMutations(password) {
   const mutations = [
     { original: 'a', mutation: '@' },
@@ -62,11 +64,10 @@ function detectCommonMutations(password) {
     }
   });
 
-  console.log('Detected mutations:', detectedMutations);
   return detectedMutations.length > 0 ? detectedMutations : null;
 }
 
-// Log the data related to user prediction
+// Detect if the password includes predictable or user-specific data
 function detectPasswordPrediction(password, userData) {
   let matchedPatterns = [];
 
@@ -86,16 +87,12 @@ function detectPasswordPrediction(password, userData) {
     }
   }
 
-  console.log('Password prediction warnings:', matchedPatterns);
   return matchedPatterns.length > 0 ? matchedPatterns : null;
 }
 
-// Log entropy calculation and scoring process
-function calculatePasswordScore(password, userData) {
-  console.log('Calculating password score for password:', password);
+// Password Strength Calculation
+function calculatePasswordScore(password) {
   const entropy = calculateEntropy(password);
-  console.log('Password entropy:', entropy);
-
   let score = 0;
 
   if (entropy >= 40) score += 40;
@@ -109,16 +106,10 @@ function calculatePasswordScore(password, userData) {
 
   if (/(.)\1{2,}/.test(password)) score -= 10;
 
-  const predictionWarning = detectPasswordPrediction(password, userData);
-  if (predictionWarning) {
-    score -= 30;
-  }
-
-  console.log('Final password score:', score);
   return Math.min(Math.max(score, 0), 100);
 }
 
-// Log feedback about password
+// Password Feedback Generation
 function getPasswordFeedback(password, userData) {
   const tips = [];
   const predictablePatterns = detectPredictablePatterns(password);
@@ -147,11 +138,10 @@ function getPasswordFeedback(password, userData) {
     }
   }
 
-  console.log('Generated password tips:', tips);
   return tips.length > 0 ? tips : ['Your password is strong!'];
 }
 
-// Log user hash and storage process
+// Hash and store the user data securely
 async function hashAndStoreUser(password, userData) {
   const saltRounds = 10;
   try {
@@ -172,102 +162,43 @@ async function hashAndStoreUser(password, userData) {
   }
 }
 
-function classifyPasswordStrength(score, entropy, predictionWarning) {
-  // 1. Ensure prediction warning is prioritized (if present, classify as weak)
-  if (predictionWarning && predictionWarning.length > 0) {
-    console.log("Prediction warning detected, classifying as weak");
-    return "weak"; // If prediction warning exists, classify as weak
-  }
-
-  // 2. Strong password criteria: score >= 80 and entropy >= 60
-  if (score >= 80 || entropy >= 60) {
-    console.log("Password classified as strong based on score >= 80 and entropy >= 60");
-    return "strong"; // Strong if both score and entropy are high
-  }
-
-  // 3. Moderate password criteria (two scenarios):
-  // a. High score (> 65) and low entropy (< 45)
-  if (score > 65 && entropy < 45) {
-    console.log("Password classified as moderate due to score above 65 and entropy below 45");
-    return "moderate"; // Moderate if score is high but entropy is low
-  }
-
-  // b. Score between 60-79 and entropy between 40-59
-  if ((score >= 60 && score < 80) && (entropy >= 40 && entropy < 60)) {
-    console.log("Password classified as moderate based on score between 60 and 79, and entropy between 40 and 59");
-    return "moderate"; // Moderate based on score and entropy ranges
-  }
-
-  // 4. Weak password criteria (all cases below):
-  // a. Low score and low entropy
-  if (score < 60 && entropy < 40) {
-    console.log("Password classified as weak based on low score and entropy");
-    return "weak"; // Weak if both score and entropy are low
-  }
-
-  // b. Low score but decent entropy (score < 60 and entropy between 40-59)
-  if (score < 60 && entropy >= 40 && entropy < 60) {
-    console.log("Password classified as weak due to low score and decent entropy");
-    return "weak"; // Weak due to low score and decent entropy
-  }
-
-  // c. High score but low entropy (score between 60-79 and entropy < 40)
-  if (score >= 60 && score < 80 && entropy < 40) {
-    console.log("Password classified as weak due to high score but low entropy");
-    return "weak"; // Weak due to high score but low entropy
-  }
-
-  // If none of the above conditions are met, classify as weak by default
-  console.log("Password classified as weak by default");
-  return "weak"; // Default to weak if no other conditions are met
-}
-
-
-// Endpoint to check password strength and log all results
+// Handle POST request for password checking
 app.post('/check-password', async (req, res) => {
-  console.log('Received request to check password:', req.body);
-  
   const { password, userData } = req.body;
 
   if (!password) {
-    console.log('Password is missing');
     return res.status(400).json({ message: 'Password is required' });
   }
 
   if (!userData) {
-    console.log('User data is missing');
     return res.status(400).json({ message: 'User data is required' });
   }
 
-  const score = calculatePasswordScore(password, userData);
+  const score = calculatePasswordScore(password);
   const entropy = calculateEntropy(password);
   const mutationWarning = detectCommonMutations(password) || 'None';
   const predictionWarning = detectPasswordPrediction(password, userData) || 'None';
-  const strength = classifyPasswordStrength(score, predictionWarning);
   const tips = getPasswordFeedback(password, userData);
-
-  console.log('Password strength classification:', strength);
-  console.log('Password feedback:', tips);
 
   const userStored = await hashAndStoreUser(password, userData);
   if (!userStored) {
-    console.error('Error storing user data');
     return res.status(500).json({ message: 'Error storing the user data. Try again later.' });
   }
 
   return res.json({
-    strength,
+    strength: score >= 80 ? 'strong' : score >= 50 ? 'moderate' : 'weak',
     score: `${score}/100`,
     entropy: entropy || 'N/A',
     mutationWarning,
     predictionWarning,
     tips,
-    message: `Password strength: ${strength}`,
+    message: `Password strength: ${
+      score >= 80 ? 'strong' : score >= 50 ? 'moderate' : 'weak'
+    }`,
   });
 });
 
-
-
+// Start server
 const PORT = 3002;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
